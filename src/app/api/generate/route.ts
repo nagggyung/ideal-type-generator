@@ -29,35 +29,40 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Pollinations Text API — 한국어 → 영문 프롬프트 변환 (서버에서만 실행, 보통 2~5초)
-    const textRes = await fetch("https://text.pollinations.ai/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a creative prompt engineer. Convert the Korean description of an ideal romantic partner into a detailed English prompt for image generation. Focus on physical appearance, facial features, expression, style, and atmosphere. Make it vivid and specific. Output only the English prompt, nothing else.",
-          },
-          { role: "user", content: userInput },
-        ],
-        model: "openai",
-        seed: Math.floor(Math.random() * 10000),
-      }),
-    });
+    // Pollinations Text API — 한국어 → 영문 프롬프트 변환 (5초 타임아웃, 실패 시 원문 사용)
+    let prompt = userInput;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    if (!textRes.ok) {
-      return NextResponse.json({ error: "프롬프트 변환에 실패했습니다." }, { status: 500 });
+      const textRes = await fetch("https://text.pollinations.ai/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a creative prompt engineer. Convert the Korean description of an ideal romantic partner into a detailed English prompt for image generation. Focus on physical appearance, facial features, expression, style, and atmosphere. Make it vivid and specific. Output only the English prompt, nothing else.",
+            },
+            { role: "user", content: userInput },
+          ],
+          model: "openai",
+          seed: Math.floor(Math.random() * 10000),
+        }),
+      });
+      clearTimeout(timeoutId);
+
+      if (textRes.ok) {
+        const converted = (await textRes.text()).trim();
+        if (converted) prompt = converted;
+      }
+    } catch {
+      // 텍스트 API 실패 시 원문(한국어)으로 이미지 생성 (FLUX는 한국어도 지원)
     }
 
-    const prompt = (await textRes.text()).trim();
-    if (!prompt) {
-      return NextResponse.json({ error: "프롬프트 변환에 실패했습니다." }, { status: 500 });
-    }
-
-    // 이미지는 URL만 반환 — 실제 fetch는 브라우저가 직접 수행
-    // (Vercel Hobby 10초 제한으로 서버에서 이미지 fetch 불가)
+    // 이미지 URL 반환 — 브라우저가 직접 로드 (Vercel Hobby 10초 제한 우회)
     const encodedPrompt = encodeURIComponent(prompt.slice(0, 300));
     const seed = Math.floor(Math.random() * 1000000);
     const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
