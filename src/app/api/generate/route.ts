@@ -80,10 +80,12 @@ Output only the English prompt, nothing else.`,
       prompt = `Realistic portrait photo of a beautiful ${genderContext}. Description: ${userInput}. Draw a human face only, not animals.`;
     }
 
-    // 이미지 URL 반환 — 브라우저가 직접 로드 (Vercel Hobby 10초 제한 우회)
+    // Pollinations URL을 서버 프록시로 감싸서 반환
+    // 브라우저가 직접 요청하면 사용자 IP가 rate limit 걸림 → 서버 IP로 우회
     const encodedPrompt = encodeURIComponent(prompt.slice(0, 300));
     const seed = Math.floor(Math.random() * 1000000);
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
+    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}`;
+    const imageUrl = `/api/image-proxy?url=${encodeURIComponent(pollinationsUrl)}`;
 
     return NextResponse.json({ image_url: imageUrl, prompt });
   } catch (err) {
