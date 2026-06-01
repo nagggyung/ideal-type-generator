@@ -1,37 +1,23 @@
 export const runtime = "edge";
 
-const ALLOWED_HOST = "image.pollinations.ai";
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const encodedUrl = searchParams.get("url");
+  const prompt = searchParams.get("prompt");
+  const seed = searchParams.get("seed") ?? String(Math.floor(Math.random() * 1000000));
 
-  if (!encodedUrl) {
-    return new Response(JSON.stringify({ error: "url 파라미터가 필요합니다." }), {
+  if (!prompt) {
+    return new Response(JSON.stringify({ error: "prompt 파라미터가 필요합니다." }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  let targetUrl: URL;
-  try {
-    targetUrl = new URL(encodedUrl);
-  } catch {
-    return new Response(JSON.stringify({ error: "잘못된 URL입니다." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  // 프록시가 직접 URL 조립 → 이중 인코딩 없음
+  const pollinationsUrl =
+    `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
+    `?width=1024&height=1024&nologo=true&seed=${seed}`;
 
-  // Pollinations 도메인만 허용
-  if (targetUrl.hostname !== ALLOWED_HOST) {
-    return new Response(JSON.stringify({ error: "허용되지 않는 도메인입니다." }), {
-      status: 403,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  const response = await fetch(targetUrl.toString(), {
+  const response = await fetch(pollinationsUrl, {
     headers: { "User-Agent": "Mozilla/5.0" },
   });
 

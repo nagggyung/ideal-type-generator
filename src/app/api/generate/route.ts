@@ -127,10 +127,9 @@ Keep it under 100 words.`,
     // 텍스트 API 실패 — 로컬 변환 결과 그대로 사용
   }
 
-  const encodedPrompt = encodeURIComponent(prompt.slice(0, 400));
+  // 프록시에 프롬프트 텍스트만 전달 (이중 인코딩 방지)
   const seed = Math.floor(Math.random() * 1000000);
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}`;
-  const imageUrl = `/api/image-proxy?url=${encodeURIComponent(pollinationsUrl)}`;
+  const imageUrl = `/api/image-proxy?prompt=${encodeURIComponent(prompt.slice(0, 400))}&seed=${seed}`;
 
   return NextResponse.json({ image_url: imageUrl, prompt });
 }
