@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const maxDuration = 60;
+export const maxDuration = 10;
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Pollinations Text API — 한국어 → 이미지 생성용 영문 프롬프트 변환 (무료, 키 불필요)
+    // Pollinations Text API — 한국어 → 영문 프롬프트 변환 (서버에서만 실행, 보통 2~5초)
     const textRes = await fetch("https://text.pollinations.ai/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,21 +56,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "프롬프트 변환에 실패했습니다." }, { status: 500 });
     }
 
-    // Pollinations Image API — 완전 무료, 키 불필요
-    // 프롬프트가 길면 URL이 너무 길어져 실패하므로 서버에서 직접 fetch해 base64로 반환
+    // 이미지는 URL만 반환 — 실제 fetch는 브라우저가 직접 수행
+    // (Vercel Hobby 10초 제한으로 서버에서 이미지 fetch 불가)
     const encodedPrompt = encodeURIComponent(prompt.slice(0, 300));
     const seed = Math.floor(Math.random() * 1000000);
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
-
-    const imgRes = await fetch(pollinationsUrl);
-    if (!imgRes.ok) {
-      return NextResponse.json({ error: "이미지 생성에 실패했습니다." }, { status: 500 });
-    }
-
-    const contentType = imgRes.headers.get("content-type") ?? "image/jpeg";
-    const buffer = await imgRes.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
-    const imageUrl = `data:${contentType};base64,${base64}`;
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}&model=flux`;
 
     return NextResponse.json({ image_url: imageUrl, prompt });
   } catch (err) {

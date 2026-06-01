@@ -90,20 +90,31 @@ export default function ResultPage() {
               <p className="text-sm text-gray-400">이미지를 불러오는 중...</p>
             </div>
           )}
+          {!imageLoaded && !imageError && (
+            <p className="text-xs text-gray-300 absolute bottom-2">최대 30초 소요될 수 있어요</p>
+          )}
           {imageError && (
-            <div className="flex flex-col items-center gap-2 py-16 text-gray-400">
+            <div className="flex flex-col items-center gap-3 py-16 text-gray-400">
               <p className="text-3xl">😢</p>
-              <p className="text-sm">이미지를 불러오지 못했습니다.</p>
+              <p className="text-sm">이미지 생성 서버가 바빠요. 잠시 후 다시 시도해주세요.</p>
+              <button
+                onClick={() => { setImageError(false); setImageLoaded(false); }}
+                className="text-xs bg-pink-50 hover:bg-pink-100 text-pink-500 border border-pink-200 px-3 py-1 rounded-full"
+              >
+                🔄 다시 불러오기
+              </button>
             </div>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={result.image_url}
-            alt="생성된 이상형 이미지"
-            className={`w-full object-cover transition-opacity duration-300 ${imageLoaded ? "opacity-100" : "opacity-0 absolute"}`}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
-          />
+          {!imageError && (
+            <img
+              src={result.image_url}
+              alt="생성된 이상형 이미지"
+              className={`w-full object-cover transition-opacity duration-300 ${imageLoaded ? "opacity-100" : "opacity-0 absolute"}`}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+            />
+          )}
         </div>
 
         {/* 입력 조건 */}
