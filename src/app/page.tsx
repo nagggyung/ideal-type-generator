@@ -12,11 +12,26 @@ const EXAMPLE_KEYWORDS = [
   "세련된 스타일",
 ];
 
+type Gender = "남성" | "여성" | "상관없음";
+
+const GENDER_OPTIONS: { value: Gender; emoji: string; label: string }[] = [
+  { value: "남성", emoji: "👨", label: "남성" },
+  { value: "여성", emoji: "👩", label: "여성" },
+  { value: "상관없음", emoji: "🧑", label: "상관없음" },
+];
+
 export default function Home() {
+  const [step, setStep] = useState<"gender" | "input">("gender");
+  const [gender, setGender] = useState<Gender | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  function handleGenderSelect(g: Gender) {
+    setGender(g);
+    setStep("input");
+  }
 
   function addKeyword(keyword: string) {
     setInput((prev) => (prev ? `${prev}, ${keyword}` : keyword));
@@ -24,7 +39,7 @@ export default function Home() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !gender) return;
 
     setLoading(true);
     setError("");
@@ -33,7 +48,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_input: input.trim() }),
+        body: JSON.stringify({ user_input: input.trim(), gender }),
       });
 
       const data = await res.json();
@@ -43,10 +58,9 @@ export default function Home() {
         return;
       }
 
-      // URL 길이 제한 우회 — sessionStorage로 전달
       sessionStorage.setItem(
         "generation_result",
-        JSON.stringify({ image_url: data.image_url, prompt: data.prompt, user_input: input.trim() })
+        JSON.stringify({ image_url: data.image_url, prompt: data.prompt, user_input: input.trim(), gender })
       );
       router.push("/result");
     } catch {
@@ -64,41 +78,75 @@ export default function Home() {
           <p className="text-gray-500 text-sm">당신의 이상형을 자유롭게 표현해보세요</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="예) 차분하고 지적인 분위기의 강아지상, 다정하고 따뜻한 미소를 가진..."
-            maxLength={500}
-            rows={4}
-            className="border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-pink-400 text-gray-700 text-sm"
-          />
-          <div className="flex flex-wrap gap-2">
-            {EXAMPLE_KEYWORDS.map((kw) => (
-              <button
-                key={kw}
-                type="button"
-                onClick={() => addKeyword(kw)}
-                className="text-xs bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 px-3 py-1 rounded-full transition-colors"
-              >
-                + {kw}
-              </button>
-            ))}
+        {step === "gender" ? (
+          <div data-testid="gender-step">
+            <p className="text-center text-gray-600 font-medium mb-6">어떤 성별의 이상형을 원하시나요?</p>
+            <div className="flex flex-col gap-3">
+              {GENDER_OPTIONS.map(({ value, emoji, label }) => (
+                <button
+                  key={value}
+                  data-testid={`gender-${value}`}
+                  onClick={() => handleGenderSelect(value)}
+                  className="flex items-center gap-4 p-4 rounded-2xl border-2 border-gray-100 hover:border-pink-300 hover:bg-pink-50 transition-all text-left"
+                >
+                  <span className="text-3xl">{emoji}</span>
+                  <span className="text-lg font-semibold text-gray-700">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="text-right text-xs text-gray-400">{input.length}/500</div>
+        ) : (
+          <div data-testid="input-step">
+            <div className="flex items-center gap-2 mb-5">
+              <button
+                onClick={() => setStep("gender")}
+                className="text-sm text-gray-400 hover:text-gray-600"
+                aria-label="성별 선택으로 돌아가기"
+              >
+                ← 다시 선택
+              </button>
+              <span className="text-sm bg-pink-100 text-pink-600 px-3 py-1 rounded-full font-medium">
+                {GENDER_OPTIONS.find((g) => g.value === gender)?.emoji} {gender}
+              </span>
+            </div>
 
-          {error && (
-            <p className="text-red-500 text-sm text-center bg-red-50 rounded-lg p-3">{error}</p>
-          )}
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="예) 차분하고 지적인 분위기의 강아지상, 다정하고 따뜻한 미소를 가진..."
+                maxLength={500}
+                rows={4}
+                className="border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-pink-400 text-gray-700 text-sm"
+              />
+              <div className="flex flex-wrap gap-2">
+                {EXAMPLE_KEYWORDS.map((kw) => (
+                  <button
+                    key={kw}
+                    type="button"
+                    onClick={() => addKeyword(kw)}
+                    className="text-xs bg-pink-50 hover:bg-pink-100 text-pink-600 border border-pink-200 px-3 py-1 rounded-full transition-colors"
+                  >
+                    + {kw}
+                  </button>
+                ))}
+              </div>
+              <div className="text-right text-xs text-gray-400">{input.length}/500</div>
 
-          <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 rounded-xl transition-all shadow-md disabled:shadow-none"
-          >
-            {loading ? "🎨 이상형을 그리는 중..." : "✨ 이미지 생성하기"}
-          </button>
-        </form>
+              {error && (
+                <p className="text-red-500 text-sm text-center bg-red-50 rounded-lg p-3">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 disabled:from-gray-300 disabled:to-gray-300 text-white font-semibold py-3 rounded-xl transition-all shadow-md disabled:shadow-none"
+              >
+                {loading ? "🎨 이상형을 그리는 중..." : "✨ 이미지 생성하기"}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

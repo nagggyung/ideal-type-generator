@@ -20,6 +20,7 @@ export async function POST(request: Request) {
   }
 
   const userInput = ((body as Record<string, unknown>).user_input as string).trim();
+  const gender = (body as Record<string, unknown>).gender as string | undefined;
 
   if (!userInput) {
     return NextResponse.json({ error: "이상형 조건을 입력해주세요." }, { status: 400 });
@@ -27,6 +28,11 @@ export async function POST(request: Request) {
   if (userInput.length > 500) {
     return NextResponse.json({ error: "입력은 500자 이하로 작성해주세요." }, { status: 400 });
   }
+
+  const genderContext =
+    gender === "남성" ? "male man"
+    : gender === "여성" ? "female woman"
+    : "person";
 
   try {
     // Pollinations Text API — 한국어 → 영문 프롬프트 변환 (5초 타임아웃, 실패 시 원문 사용)
@@ -44,7 +50,7 @@ export async function POST(request: Request) {
             {
               role: "system",
               content:
-                `You are a creative prompt engineer specializing in Korean beauty concepts. Convert the Korean description of an ideal romantic partner into a detailed English prompt for image generation of a HUMAN PERSON.
+                `You are a creative prompt engineer specializing in Korean beauty concepts. Convert the Korean description of an ideal romantic partner into a detailed English prompt for image generation of a HUMAN ${genderContext.toUpperCase()}.
 
 CRITICAL: Korean "상(相)" terms describe human facial types, NOT animals:
 - 강아지상 = puppy-like face: round soft face, droopy gentle eyes, cute small nose, innocent warm expression
@@ -53,7 +59,7 @@ CRITICAL: Korean "상(相)" terms describe human facial types, NOT animals:
 - 고양이상 = cat-like face: sharp almond eyes, defined cheekbones, mysterious alluring look
 - 여우상 = fox-like face: sharp sexy eyes, high cheekbones, sophisticated expression
 
-Always generate a HUMAN with these facial characteristics. Never draw actual animals.
+The subject MUST be a ${genderContext}. Always generate a HUMAN with these facial characteristics. Never draw actual animals.
 Focus on: face shape, eye shape, nose, lips, expression, hair, outfit, atmosphere.
 Output only the English prompt, nothing else.`,
             },
@@ -71,7 +77,7 @@ Output only the English prompt, nothing else.`,
       }
     } catch {
       // 텍스트 API 실패 시 사람 포트레이트 맥락만 명시 (동물 생성 방지)
-      prompt = `Realistic portrait photo of a beautiful human person. Description: ${userInput}. Draw a human face only, not animals.`;
+      prompt = `Realistic portrait photo of a beautiful ${genderContext}. Description: ${userInput}. Draw a human face only, not animals.`;
     }
 
     // 이미지 URL 반환 — 브라우저가 직접 로드 (Vercel Hobby 10초 제한 우회)
