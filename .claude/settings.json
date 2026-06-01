@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/nagyungcho/Desktop/개발/multi-cc/my-app && npm run verify 2>&1 | tail -10"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/nagyungcho/Desktop/개발/multi-cc/my-app && node scripts/guardrails/check-env-exposure.js"
+          }
+        ]
+      }
+    ]
+  }
+}

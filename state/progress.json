@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "project": "ideal-type-image-generator",
+  "goal": "사용자가 자연어로 이상형 조건을 입력하면 GPT가 프롬프트로 변환하고 DALL·E로 이미지를 생성해주는 Next.js + Supabase 앱",
+  "current_sprint": "sprint-03",
+  "status": "complete",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "환경변수 및 Supabase 연동 설정",
+      "status": "done"
+    },
+    {
+      "id": "T2",
+      "title": "generations 테이블 스키마 및 RLS 정책 작성",
+      "status": "done"
+    },
+    {
+      "id": "T3",
+      "title": "Supabase Auth 로그인 페이지 구현",
+      "status": "done"
+    },
+    {
+      "id": "T4",
+      "title": "GPT 프롬프트 변환 + DALL·E 이미지 생성 API 구현",
+      "status": "done"
+    },
+    {
+      "id": "T5",
+      "title": "이상형 조건 입력 폼 및 결과 화면 구현",
+      "status": "done"
+    },
+    {
+      "id": "T6",
+      "title": "이미지 저장 및 기록 페이지 구현",
+      "status": "done"
+    },
+    {
+      "id": "T7",
+      "title": "e2e 테스트 (Playwright) 작성 및 전체 통과",
+      "status": "done"
+    }
+  ],
+  "e2e": {
+    "framework": "Playwright",
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "suites": [
+      "e2e/home.spec.ts — 홈 페이지 입력 폼 (5개)",
+      "e2e/auth.spec.ts — 인증 및 보호 라우트 (5개)",
+      "e2e/generate-api.spec.ts — API 입력 검증 및 인증 (4개)"
+    ]
+  },
+  "notes": [
+    "OPENAI_API_KEY는 .env.local에 플레이스홀더로 설정됨 — 실제 키 입력 필요",
+    "Turbopack이 한글 경로에서 버그가 있어 --webpack 모드로 dev 서버 실행",
+    "generation-images Storage 버킷 및 RLS 정책 적용 완료"
+  ],
+  "last_updated": "2026-06-01"
+}
