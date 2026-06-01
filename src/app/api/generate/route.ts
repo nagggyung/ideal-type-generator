@@ -2,6 +2,53 @@ import { NextResponse } from "next/server";
 
 export const maxDuration = 10;
 
+// 한국어 얼굴형 슬랭 → 영문 설명 매핑 (텍스트 API 없이 항상 동작)
+const FACE_TYPE_MAP: [RegExp, string][] = [
+  [/강아지상/g, "puppy-like facial features (soft round face, droopy gentle eyes, cute small nose, warm innocent expression)"],
+  [/고양이상/g, "cat-like facial features (sharp almond-shaped eyes, defined cheekbones, mysterious alluring look)"],
+  [/토끼상/g, "bunny-like facial features (large bright eyes, small button nose, soft round cheeks)"],
+  [/사슴상/g, "deer-like facial features (large doe eyes, slim elegant face, long lashes, innocent delicate expression)"],
+  [/여우상/g, "fox-like facial features (sharp sophisticated eyes, high cheekbones, sexy alluring expression)"],
+  [/곰상/g, "bear-like facial features (soft round face, friendly warm eyes, gentle cozy expression)"],
+  [/늑대상/g, "wolf-like facial features (sharp intense eyes, strong jawline, fierce yet handsome look)"],
+  [/한국인/g, "Korean"],
+  [/동양인/g, "East Asian"],
+  [/서양인/g, "Western European"],
+  [/차분한/g, "calm serene"],
+  [/다정한/g, "warm gentle caring"],
+  [/지적인/g, "intelligent sophisticated"],
+  [/세련된/g, "stylish refined"],
+  [/귀여운/g, "cute adorable"],
+  [/섹시한/g, "attractive confident"],
+  [/청순한/g, "pure innocent fresh"],
+  [/강렬한/g, "intense captivating"],
+  [/분위기/g, "atmosphere vibe"],
+  [/느낌/g, "feeling style"],
+  [/외모/g, "appearance looks"],
+  [/미소/g, "smile"],
+  [/스타일/g, "style fashion"],
+  [/젊은/g, "young"],
+  [/어린/g, "young youthful"],
+  [/성숙한/g, "mature sophisticated"],
+  [/슬림한/g, "slim slender"],
+  [/보조개/g, "dimples"],
+  [/쌍꺼풀/g, "double eyelids"],
+];
+
+function buildLocalPrompt(userInput: string, genderContext: string): string {
+  let translated = userInput;
+  for (const [pattern, replacement] of FACE_TYPE_MAP) {
+    translated = translated.replace(pattern, replacement);
+  }
+
+  return [
+    `Photorealistic portrait of a beautiful ${genderContext},`,
+    translated,
+    "Human face and body only — absolutely no animals.",
+    "Ultra-detailed face, professional studio photography, soft natural lighting, 8k resolution.",
+  ].join(" ");
+}
+
 export async function POST(request: Request) {
   let body: unknown;
   try {
@@ -30,66 +77,60 @@ export async function POST(request: Request) {
   }
 
   const genderContext =
-    gender === "남성" ? "male man"
-    : gender === "여성" ? "female woman"
-    : "person";
+    gender === "남성" ? "Korean man"
+    : gender === "여성" ? "Korean woman"
+    : "Korean person";
 
+  // 로컬 변환으로 기본 프롬프트 생성 (항상 동작, 동물 생성 방지 보장)
+  let prompt = buildLocalPrompt(userInput, genderContext);
+
+  // 텍스트 API로 외모 묘사를 더 풍부하게 보완
+  // 반환값은 항상 로컬 프롬프트의 앞뒤 "인간 강제" 구조 안에 삽입 → 어떤 내용이 와도 인간 포트레이트
   try {
-    // Pollinations Text API — 한국어 → 영문 프롬프트 변환 (5초 타임아웃, 실패 시 원문 사용)
-    let prompt = userInput;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const textRes = await fetch("https://text.pollinations.ai/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "system",
-              content:
-                `You are a creative prompt engineer specializing in Korean beauty concepts. Convert the Korean description of an ideal romantic partner into a detailed English prompt for image generation of a HUMAN ${genderContext.toUpperCase()}.
+    const textRes = await fetch("https://text.pollinations.ai/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "system",
+            content: `You are a creative prompt engineer.
+Based on the description below, write a vivid English description of a person's appearance only.
+Focus on: face shape, eye shape, nose, lips, expression, hair style and color, outfit, skin tone, atmosphere.
+Output only the descriptive text (no "photorealistic", no "portrait", no "human" — just the appearance details).
+Keep it under 100 words.`,
+          },
+          { role: "user", content: prompt },
+        ],
+        model: "openai",
+        seed: Math.floor(Math.random() * 10000),
+      }),
+    });
+    clearTimeout(timeoutId);
 
-CRITICAL: Korean "상(相)" terms describe human facial types, NOT animals:
-- 강아지상 = puppy-like face: round soft face, droopy gentle eyes, cute small nose, innocent warm expression
-- 토끼상 = bunny-like face: big bright eyes, small cute nose, slightly prominent front teeth, soft round cheeks
-- 사슴상 = deer-like face: large doe eyes, slim elegant face, innocent delicate features, long eyelashes
-- 고양이상 = cat-like face: sharp almond eyes, defined cheekbones, mysterious alluring look
-- 여우상 = fox-like face: sharp sexy eyes, high cheekbones, sophisticated expression
-
-The subject MUST be a ${genderContext}. Always generate a HUMAN with these facial characteristics. Never draw actual animals.
-Focus on: face shape, eye shape, nose, lips, expression, hair, outfit, atmosphere.
-Output only the English prompt, nothing else.`,
-            },
-            { role: "user", content: userInput },
-          ],
-          model: "openai",
-          seed: Math.floor(Math.random() * 10000),
-        }),
-      });
-      clearTimeout(timeoutId);
-
-      if (textRes.ok) {
-        const converted = (await textRes.text()).trim();
-        if (converted) prompt = converted;
+    if (textRes.ok) {
+      const appearance = (await textRes.text()).trim();
+      if (appearance) {
+        // 외모 묘사를 항상 "인간 포트레이트" 구조로 감싸서 사용
+        prompt = [
+          `Photorealistic portrait of a beautiful ${genderContext},`,
+          appearance,
+          "Human person only. Ultra-detailed face, professional studio photography, soft natural lighting.",
+        ].join(" ");
       }
-    } catch {
-      // 텍스트 API 실패 시 사람 포트레이트 맥락만 명시 (동물 생성 방지)
-      prompt = `Realistic portrait photo of a beautiful ${genderContext}. Description: ${userInput}. Draw a human face only, not animals.`;
     }
-
-    // Pollinations URL을 서버 프록시로 감싸서 반환
-    // 브라우저가 직접 요청하면 사용자 IP가 rate limit 걸림 → 서버 IP로 우회
-    const encodedPrompt = encodeURIComponent(prompt.slice(0, 300));
-    const seed = Math.floor(Math.random() * 1000000);
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}`;
-    const imageUrl = `/api/image-proxy?url=${encodeURIComponent(pollinationsUrl)}`;
-
-    return NextResponse.json({ image_url: imageUrl, prompt });
-  } catch (err) {
-    console.error("Generate API error:", err);
-    return NextResponse.json({ error: "이미지 생성 중 오류가 발생했습니다." }, { status: 500 });
+  } catch {
+    // 텍스트 API 실패 — 로컬 변환 결과 그대로 사용
   }
+
+  const encodedPrompt = encodeURIComponent(prompt.slice(0, 400));
+  const seed = Math.floor(Math.random() * 1000000);
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${seed}`;
+  const imageUrl = `/api/image-proxy?url=${encodeURIComponent(pollinationsUrl)}`;
+
+  return NextResponse.json({ image_url: imageUrl, prompt });
 }
