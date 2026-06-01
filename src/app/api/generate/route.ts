@@ -44,7 +44,18 @@ export async function POST(request: Request) {
             {
               role: "system",
               content:
-                "You are a creative prompt engineer. Convert the Korean description of an ideal romantic partner into a detailed English prompt for image generation. Focus on physical appearance, facial features, expression, style, and atmosphere. Make it vivid and specific. Output only the English prompt, nothing else.",
+                `You are a creative prompt engineer specializing in Korean beauty concepts. Convert the Korean description of an ideal romantic partner into a detailed English prompt for image generation of a HUMAN PERSON.
+
+CRITICAL: Korean "상(相)" terms describe human facial types, NOT animals:
+- 강아지상 = puppy-like face: round soft face, droopy gentle eyes, cute small nose, innocent warm expression
+- 토끼상 = bunny-like face: big bright eyes, small cute nose, slightly prominent front teeth, soft round cheeks
+- 사슴상 = deer-like face: large doe eyes, slim elegant face, innocent delicate features, long eyelashes
+- 고양이상 = cat-like face: sharp almond eyes, defined cheekbones, mysterious alluring look
+- 여우상 = fox-like face: sharp sexy eyes, high cheekbones, sophisticated expression
+
+Always generate a HUMAN with these facial characteristics. Never draw actual animals.
+Focus on: face shape, eye shape, nose, lips, expression, hair, outfit, atmosphere.
+Output only the English prompt, nothing else.`,
             },
             { role: "user", content: userInput },
           ],
@@ -59,7 +70,8 @@ export async function POST(request: Request) {
         if (converted) prompt = converted;
       }
     } catch {
-      // 텍스트 API 실패 시 원문(한국어)으로 이미지 생성 (FLUX는 한국어도 지원)
+      // 텍스트 API 실패 시 사람 포트레이트 맥락만 명시 (동물 생성 방지)
+      prompt = `Realistic portrait photo of a beautiful human person. Description: ${userInput}. Draw a human face only, not animals.`;
     }
 
     // 이미지 URL 반환 — 브라우저가 직접 로드 (Vercel Hobby 10초 제한 우회)
